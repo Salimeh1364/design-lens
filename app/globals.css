@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #f3efe8;
+  --card: #fffcf8;
+  --ink: #161412;
+  --mute: #746d66;
+  --line: #e4ddd2;
+  --accent: #c4472c;
+  --accent-soft: #f8ebe6;
+  --severity-medium: #b07a32;
+  --severity-low: #5f7a68;
+  --background: var(--paper);
+  --foreground: var(--ink);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-mute: var(--mute);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-severity-medium: var(--severity-medium);
+  --color-severity-low: var(--severity-low);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: var(--font-instrument-serif), "Iowan Old Style", Palatino, serif;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+::selection {
+  background: #f0d2cb;
+  color: var(--ink);
+}
+
+.studio-canvas {
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 100% -10%, rgba(196, 71, 44, 0.09), transparent 52%),
+    radial-gradient(ellipse 46% 36% at -8% 0%, rgba(22, 20, 18, 0.05), transparent 48%);
+}
