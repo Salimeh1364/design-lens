@@ -19,7 +19,7 @@ const FETCH_TIMEOUT_MS = 8_000;
 const OUTLINE_CHARS = 12_000;
 
 export class PageFetchError extends Error {
-  readonly reason: "blocked" | "unreachable" | "not_html" | "too_large";
+  readonly reason: "blocked" | "unreachable" | "not_html" | "too_large" | "timeout";
 
   constructor(reason: PageFetchError["reason"]) {
     super(reason);
@@ -235,6 +235,13 @@ function looksLikeHtml(html: string, contentType: string): boolean {
     return true;
   }
   return /^\s*(?:<!doctype html|<html\b)/i.test(html.slice(0, 300));
+}
+
+/** Confirms the address is public, including a DNS lookup, before any browser navigation. */
+export async function assertPublicDestination(rawUrl: string): Promise<URL> {
+  const url = assertPublicUrl(rawUrl);
+  await assertPublicDns(url.hostname);
+  return url;
 }
 
 /** Synchronous reject for loopback, credentials, and non-http URLs. DNS waits until fetch. */

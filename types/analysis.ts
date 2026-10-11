@@ -120,6 +120,7 @@ export const ANALYSIS_ERROR_CODES = [
   "page_unreachable",
   "too_large",
   "aborted",
+  "timeout",
 ] as const;
 
 export type AnalysisErrorCode = (typeof ANALYSIS_ERROR_CODES)[number];

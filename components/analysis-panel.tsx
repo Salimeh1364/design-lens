@@ -44,6 +44,7 @@ const ERROR_COPY: Record<AnalysisErrorCode, keyof Dictionary> = {
   page_unreachable: "errorPage",
   too_large: "errorTooLarge",
   aborted: "errorGeneric",
+  timeout: "errorTimeout",
 };
 
 function statusLabel(status: AnalysisStatus, hasSource: boolean, t: Dictionary) {

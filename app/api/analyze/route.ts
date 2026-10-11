@@ -1,5 +1,6 @@
-import { ApiError, GoogleGenAI, ThinkingLevel, type ThinkingConfig } from "@google/genai";
-import { isObviouslyBlockedUrl, PageFetchError, readPublicPage } from "@/lib/analysis/fetch-page";
+import { ApiError, GoogleGenAI, MediaResolution, ThinkingLevel, type ThinkingConfig } from "@google/genai";
+import { capturePublicScreenshot } from "@/lib/analysis/capture-page";
+import { isObviouslyBlockedUrl, PageFetchError } from "@/lib/analysis/fetch-page";
 import { buildScreenshotPrompt, buildSystemPrompt, buildUrlPrompt } from "@/lib/analysis/prompt";
 import { analysisError } from "@/lib/analysis/respond";
 import {
@@ -57,6 +58,21 @@ function isRejectedKey(error: ApiError): boolean {
   );
 }
 
+function isRateLimited(error: ApiError): boolean {
+  return (
+    error.status === 429 ||
+    /RESOURCE_EXHAUSTED|RATE_LIMIT|rate limit|quota exceeded|too many requests/i.test(error.message)
+  );
+}
+
+function isUpstreamTimeout(error: ApiError): boolean {
+  return (
+    error.status === 408 ||
+    error.status === 504 ||
+    /DEADLINE_EXCEEDED|ETIMEDOUT|timed out|timeout/i.test(error.message)
+  );
+}
+
 /**
  * Hidden reasoning makes a review miss Google's deadline and come back as
  * a 504. Flash 2.5 can turn thinking off. Gemini 3 keeps a minimal budget.
@@ -73,22 +89,21 @@ async function review(request: AnalysisRequest, signal: AbortSignal): Promise<An
     throw new ApiError({ status: 401, message: "GEMINI_API_KEY is missing." });
   }
 
-  const outline =
-    request.kind === "url" ? await readPublicPage(request.url, signal) : null;
   const prompt =
     request.kind === "screenshot"
       ? buildScreenshotPrompt(request.label)
-      : buildUrlPrompt(request.label, outline ?? "");
-
-  // A screenshot is an inline image part. A URL review is text only: the
-  // server already fetched a public outline and the model never sees the URL.
-  const parts =
+      : buildUrlPrompt(request.label);
+  const image =
     request.kind === "screenshot"
-      ? [
-          { text: prompt },
-          { inlineData: { mimeType: request.mimeType, data: request.imageBase64 } },
-        ]
-      : [{ text: prompt }];
+      ? { mimeType: request.mimeType, data: request.imageBase64 }
+      : { mimeType: "image/jpeg" as const, data: await capturePublicScreenshot(request.url, signal) };
+
+  // URL reviews send the compressed JPEG of the first screen, not the page HTML.
+  // Medium media resolution keeps the image tokens small enough to finish in time.
+  const parts = [
+    { text: prompt },
+    { inlineData: image },
+  ];
 
   const model = resolveModelId();
   const ai = new GoogleGenAI({ apiKey });
@@ -101,6 +116,7 @@ async function review(request: AnalysisRequest, signal: AbortSignal): Promise<An
       maxOutputTokens: 2500,
       responseMimeType: "application/json",
       responseJsonSchema: analysisResultJsonSchema(),
+      mediaResolution: MediaResolution.MEDIA_RESOLUTION_MEDIUM,
       thinkingConfig: thinkingConfig(model),
       abortSignal: signal,
       httpOptions: {
@@ -170,15 +186,26 @@ export async function POST(request: Request) {
     return Response.json(result);
   } catch (error) {
     if (isAbort(error)) {
-      return analysisError(499, "aborted", "The review was cancelled.");
+      if (request.signal.aborted) {
+        return analysisError(499, "aborted", "The review was cancelled.");
+      }
+      return analysisError(
+        504,
+        "timeout",
+        "The review timed out before it could finish. Wait a moment and try again.",
+      );
     }
 
     if (error instanceof PageFetchError) {
       if (error.reason === "too_large") {
         return analysisError(413, "too_large", "That page is too large to read.");
       }
-      if (error.reason === "unreachable") {
-        return analysisError(422, "page_unreachable", "That page could not be read.");
+      if (error.reason === "unreachable" || error.reason === "timeout") {
+        return analysisError(
+          422,
+          "page_unreachable",
+          "That page could not be captured in time. Check that it is public, or upload a screenshot.",
+        );
       }
       return analysisError(400, "invalid_request", "That address cannot be reviewed.");
     }
@@ -193,8 +220,15 @@ export async function POST(request: Request) {
       if (isRejectedKey(error)) {
         return analysisError(503, "missing_key", "The analysis key was rejected.");
       }
-      if (error.status === 429) {
-        return analysisError(402, "quota", "We're receiving a high volume of requests right now. Please wait a moment and try your review again.");
+      if (isRateLimited(error)) {
+        return analysisError(429, "quota", "Too many reviews are running at once. Wait a moment and try again.");
+      }
+      if (isUpstreamTimeout(error)) {
+        return analysisError(
+          504,
+          "timeout",
+          "The review timed out before it could finish. Wait a moment and try again.",
+        );
       }
       return analysisError(502, "upstream", "The review service did not respond.");
     }

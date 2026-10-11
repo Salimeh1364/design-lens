@@ -72,6 +72,7 @@ export type Dictionary = {
   errorParse: string;
   errorPage: string;
   errorTooLarge: string;
+  errorTimeout: string;
   analysisRenderError: string;
   footer: string;
 };
@@ -108,7 +109,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
     previewAlt: "Selected screenshot",
     urlLabel: "Website address",
     urlPlaceholder: "https://your-product.com",
-    urlHint: "A public page. Design Lens reads its structure on the server. The API key stays there.",
+    urlHint: "A public page. Design Lens captures the screen on the server. The API key stays there.",
     critiqueUrl: "Critique this page",
     urlInvalid: "Enter a valid website address, such as your-product.com.",
     resultsTitle: "Critique notes",
@@ -145,11 +146,12 @@ export const dictionaries: Record<Locale, Dictionary> = {
     errorNetwork: "Design Lens could not reach the server. Check your connection and try again.",
     errorInvalid: "That source could not be reviewed. Use a PNG, JPG, or WebP under 10 MB, or a public web address.",
     errorMissingKey: "Analysis is not configured yet. Add a Gemini API key on the server.",
-    errorQuota: "We're receiving a high volume of requests right now. Please wait a moment and try your review again.",
+    errorQuota: "Too many reviews are running at once. Wait a moment and try again.",
     errorUpstream: "The review service did not respond. Try again in a moment.",
     errorParse: "The review came back in an unexpected shape. Try again.",
-    errorPage: "That page could not be read. Check that it is public, or upload a screenshot.",
+    errorPage: "That page could not be captured in time. Check that it is public, or upload a screenshot.",
     errorTooLarge: "That file is too large to send. Export a lighter screenshot.",
+    errorTimeout: "The review timed out before it could finish. Wait a moment and try again.",
     analysisRenderError: "These notes could not be shown. Try the review again.",
     footer: "Design Lens reads the screen. The decisions stay yours.",
   },
@@ -184,7 +186,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
     previewAlt: "Ausgewählter Screenshot",
     urlLabel: "Website-Adresse",
     urlPlaceholder: "https://dein-produkt.de",
-    urlHint: "Eine öffentliche Seite. Design Lens liest die Struktur auf dem Server. Der API-Schlüssel bleibt dort.",
+    urlHint: "Eine öffentliche Seite. Design Lens nimmt den Screen auf dem Server auf. Der API-Schlüssel bleibt dort.",
     critiqueUrl: "Diese Seite prüfen",
     urlInvalid: "Gib eine gültige Website-Adresse ein, zum Beispiel dein-produkt.de.",
     resultsTitle: "Kritiknotizen",
@@ -221,11 +223,12 @@ export const dictionaries: Record<Locale, Dictionary> = {
     errorNetwork: "Design Lens hat den Server nicht erreicht. Prüfe die Verbindung und versuche es erneut.",
     errorInvalid: "Diese Quelle kann nicht geprüft werden. Nutze ein PNG, JPG oder WebP unter 10 MB oder eine öffentliche Webadresse.",
     errorMissingKey: "Die Analyse ist noch nicht eingerichtet. Hinterlege einen Gemini-API-Schlüssel auf dem Server.",
-    errorQuota: "Gerade kommen sehr viele Anfragen an. Warte einen Moment und starte die Prüfung erneut.",
+    errorQuota: "Gerade laufen zu viele Prüfungen gleichzeitig. Warte einen Moment und versuche es erneut.",
     errorUpstream: "Der Prüfdienst hat nicht geantwortet. Versuche es gleich noch einmal.",
     errorParse: "Die Prüfung kam in einer unerwarteten Form zurück. Versuche es erneut.",
-    errorPage: "Die Seite konnte nicht gelesen werden. Prüfe, ob sie öffentlich ist, oder lade einen Screenshot hoch.",
+    errorPage: "Die Seite konnte nicht rechtzeitig erfasst werden. Prüfe, ob sie öffentlich ist, oder lade einen Screenshot hoch.",
     errorTooLarge: "Die Datei ist zu groß. Exportiere einen leichteren Screenshot.",
+    errorTimeout: "Die Prüfung hat das Zeitlimit überschritten. Warte einen Moment und versuche es erneut.",
     analysisRenderError: "Diese Notizen konnten nicht angezeigt werden. Starte die Prüfung erneut.",
     footer: "Design Lens liest den Screen. Die Entscheidungen bleiben bei dir.",
   },
