@@ -35,7 +35,6 @@ export function SourcePanel({ className = "", resetEpoch, onCritique }: SourcePa
     if (resetEpoch === 0) return;
     // Drop the preview URL and both inputs so the source area matches a
     // fresh visit. Local dropzone and URL errors remount with this epoch.
-    // پیش‌نمایش و هر دو ورودی پاک می‌شوند تا منبع مثل شروع صفحه باشد.
     if (previewRef.current) URL.revokeObjectURL(previewRef.current);
     previewRef.current = null;
     setFile(null);
@@ -126,7 +125,6 @@ export function SourcePanel({ className = "", resetEpoch, onCritique }: SourcePa
                 onCritique={(next) => {
                   // Drop, browse, and paste all hand over the same File.
                   // The page gives it to useAIAnalysis, which reads it as base64.
-                  // رها کردن، انتخاب فایل، و جای‌گذاری همگی همان File را می‌دهند.
                   onCritique({ kind: "screenshot", label: next.name, file: next, locale });
                 }}
               />

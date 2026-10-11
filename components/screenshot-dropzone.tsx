@@ -57,8 +57,6 @@ export function ScreenshotDropzone({
     // The listener lives on window so Ctrl+V works after a screenshot, even
     // when focus is not inside the dropzone. It is mounted only on the
     // screenshot tab, so pasting a URL on the other tab is left alone.
-    // شنونده روی window است تا بعد از اسکرین‌شات، Ctrl+V کار کند حتی اگر
-    // فوکوس داخل ناحیهٔ رها کردن نباشد. فقط در تب اسکرین‌شات وصل است.
     function onPaste(event: ClipboardEvent) {
       const target = event.target;
       if (
@@ -70,7 +68,6 @@ export function ScreenshotDropzone({
 
       // A paste on the box is handled there. Either way, paste only selects
       // the image. Critique this screen is what starts the review.
-      // جای‌گذاری فقط تصویر را انتخاب می‌کند. دکمهٔ نقد، بررسی را شروع می‌کند.
       const pasted = clipboardImage(event.clipboardData);
       if (!pasted) return;
       event.preventDefault();
@@ -84,7 +81,6 @@ export function ScreenshotDropzone({
   function onBoxPaste(event: ReactClipboardEvent<HTMLDivElement>) {
     // preventDefault keeps the bitmap out of the editable box. The preview
     // is the only place the image is shown, until Critique this screen.
-    // preventDefault تصویر را داخل جعبه نمی‌گذارد. پیش‌نمایش تا کلیک نقد می‌ماند.
     event.preventDefault();
     event.currentTarget.replaceChildren();
     const pasted = clipboardImage(event.clipboardData);
@@ -247,9 +243,8 @@ function frameClass(dragging: boolean) {
  * An empty editable layer over the box. Browsers only offer Paste in the
  * native right-click menu for an editable element, so this layer is that
  * element. It stays empty; the preview is rendered beside it.
- *
- * لایهٔ خالی و قابل ویرایش روی جعبه. مرورگر گزینهٔ Paste را فقط برای
- * عنصر قابل ویرایش در منوی راست‌کلیک نشان می‌دهد.
+ * `suppressHydrationWarning` is set because the browser may insert a break
+ * into an empty editable node before React hydrates.
  */
 function PasteCatcher({
   label,
@@ -268,6 +263,7 @@ function PasteCatcher({
     <div
       contentEditable
       suppressContentEditableWarning
+      suppressHydrationWarning
       spellCheck={false}
       aria-label={label}
       aria-multiline={false}

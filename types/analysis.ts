@@ -4,10 +4,6 @@ import type { Locale } from "@/lib/types";
  * Shared contract for a design review.
  * The browser sends `AnalysisRequest`. The server answers with `AnalysisResult`
  * or `AnalysisErrorBody`. Neither shape carries an API key.
- *
- * قرارداد مشترک نقد طراحی.
- * مرورگر `AnalysisRequest` می‌فرستد و سرور `AnalysisResult` یا `AnalysisErrorBody`
- * برمی‌گرداند. کلید API در هیچ‌کدام از این شکل‌ها نیست.
  */
 
 /** Languages the model is asked to write in. Matches the UI locale. */
@@ -30,9 +26,6 @@ export const MAX_IMAGE_BASE64_CHARS = 14_000_000;
 /**
  * Review axes shown as scores. Actionable feedback and evidence are not
  * scores — they live on each critique item.
- *
- * این‌ها محورهای نمره‌دار هستند. بازخورد عملی و شواهد نمره نیستند
- * و روی هر مورد نقد می‌آیند.
  */
 export const SCORE_DIMENSIONS = [
   "visualHierarchy",

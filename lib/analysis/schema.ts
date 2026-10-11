@@ -14,11 +14,6 @@ import {
  * - `analysisResultSchema` is handed to the model, so it stays free of
  *   transforms. Providers turn it into JSON Schema.
  * - `parseAnalysisRequest` checks the browser payload before any model call.
- *
- * دو اسکیما با دو کار متفاوت:
- * - `analysisResultSchema` به مدل داده می‌شود و تبدیل به JSON Schema می‌گردد،
- *   پس transform ندارد.
- * - `parseAnalysisRequest` بدنهٔ مرورگر را پیش از تماس با مدل بررسی می‌کند.
  */
 
 const evidenceSchema = z.object({
@@ -73,9 +68,6 @@ const GEMINI_UNSUPPORTED_SCHEMA_KEYS = new Set(["$schema", "minLength", "maxLeng
  * Gemini accepts a subset of JSON Schema. Zod's draft adds `$schema` and
  * string lengths, which that subset rejects, so those keys are removed and
  * each object records its property order.
- *
- * جمینی فقط بخشی از JSON Schema را می‌پذیرد. کلیدهای اضافی زود حذف می‌شوند
- * و ترتیب فیلدها ثبت می‌شود.
  */
 export function analysisResultJsonSchema(): unknown {
   return toGeminiSchema(analysisResultSchema.toJSONSchema());

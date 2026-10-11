@@ -36,9 +36,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang={locale}
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable} h-full scroll-smooth antialiased`}
     >
-      <body className="flex min-h-full flex-col font-sans">
+      {/* Extensions add attributes to html/body before hydration. */}
+      <body suppressHydrationWarning className="flex min-h-full flex-col font-sans">
         <LanguageProvider initialLocale={locale}>{children}</LanguageProvider>
       </body>
     </html>

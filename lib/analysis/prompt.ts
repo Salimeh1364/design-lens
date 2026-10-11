@@ -3,9 +3,6 @@ import type { AnalysisLocale } from "@/types/analysis";
 /**
  * The schema forces the JSON shape. This prompt forces the judgment:
  * specific, evidenced, and written in the designer's language.
- *
- * اسکیما شکل JSON را اجبار می‌کند. این پرامپت خودِ قضاوت را مشخص می‌کند:
- * دقیق، همراه با شاهد، و به زبان طراح.
  */
 
 function languageName(locale: AnalysisLocale): string {

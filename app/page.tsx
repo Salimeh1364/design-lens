@@ -11,9 +11,6 @@ import type { AnalysisSource } from "@/types/analysis";
 /**
  * The form and the review share this page. Submit hands the source to
  * `useAIAnalysis`; the notes section below only displays what the hook returns.
- *
- * فرم و نقد در همین صفحه به هم وصل می‌شوند. دکمهٔ ارسال منبع را به قلاب
- * می‌دهد و بخش یادداشت‌ها فقط نتیجه را نشان می‌دهد.
  */
 export default function Home() {
   const { locale, t } = useLanguage();
@@ -26,8 +23,6 @@ export default function Home() {
     // A screenshot still carries the File. The hook encodes that file to
     // base64 before the request leaves the browser. A URL is forwarded as
     // the public address; the server reads the page.
-    // مرحلهٔ ۱ — منبع را نگه می‌داریم. تصویر همین‌جا به base64 تبدیل می‌شود
-    // و نشانی سایت همان‌طور به سرور می‌رود.
     setRequest(next);
     void analyze(next, locale);
 
@@ -43,7 +38,6 @@ export default function Home() {
   function clearReview() {
     // One step back to the empty page: drop the notes, cancel a late
     // response, and ask the source form to forget its file and URL.
-    // یک قدم به صفحهٔ خالی: یادداشت‌ها پاک می‌شوند و فرم منبع فایل و نشانی را فراموش می‌کند.
     setRequest(null);
     reset();
     setSourceEpoch((epoch) => epoch + 1);

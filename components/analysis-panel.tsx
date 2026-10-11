@@ -57,9 +57,6 @@ function statusLabel(status: AnalysisStatus, hasSource: boolean, t: Dictionary) 
  * Renders the review that the page already started. This panel does not call
  * the model. Loading, the finished card, and the error alert are chosen from
  * the hook state passed in from the form above.
- *
- * این بخش خودش مدل را صدا نمی‌زند. اسکلت بارگذاری، کارت نتیجه، و پیام خطا
- * از حالتی می‌آیند که صفحه بعد از کلیک ارسال به اینجا می‌دهد.
  */
 export function AnalysisPanel({
   className = "",

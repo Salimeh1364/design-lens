@@ -14,9 +14,6 @@ import type { AnalysisRequest, AnalysisResult } from "@/types/analysis";
  * Server-only review endpoint.
  * The browser posts a screenshot or a URL. The Gemini key stays in this process.
  *
- * نقطهٔ ورود نقد، فقط روی سرور.
- * مرورگر اسکرین‌شات یا URL می‌فرستد و کلید Gemini در همین فرایند می‌ماند.
- *
  * Required env: GEMINI_API_KEY
  * Optional env: GEMINI_MODEL (default gemini-3.8-flash, which can read images)
  */
@@ -63,9 +60,6 @@ function isRejectedKey(error: ApiError): boolean {
 /**
  * Hidden reasoning makes a review miss Google's deadline and come back as
  * a 504. Flash 2.5 can turn thinking off. Gemini 3 keeps a minimal budget.
- *
- * استدلال پنهان نقد را از مهلت گوگل رد می‌کند و ۵۰۴ برمی‌گردد.
- * فلش ۲٫۵ می‌تواند آن را خاموش کند. جمینی ۳ فقط بودجهٔ کم را نگه می‌دارد.
  */
 function thinkingConfig(model: string): ThinkingConfig | undefined {
   if (/^gemini-2\.5-flash(?:-lite)?$/.test(model)) return { thinkingBudget: 0 };
@@ -88,7 +82,6 @@ async function review(request: AnalysisRequest, signal: AbortSignal): Promise<An
 
   // A screenshot is an inline image part. A URL review is text only: the
   // server already fetched a public outline and the model never sees the URL.
-  // اسکرین‌شات یک بخش تصویری است. نقد URL فقط متن است؛ مدل خودِ نشانی را نمی‌بیند.
   const parts =
     request.kind === "screenshot"
       ? [
@@ -113,7 +106,6 @@ async function review(request: AnalysisRequest, signal: AbortSignal): Promise<An
       httpOptions: {
         // This value is sent to Gemini as the server deadline. A screenshot
         // review needs more than the 50s that was returning 504.
-        // این مقدار مهلت سرور جمینی است. نقد اسکرین‌شات بیشتر از ۵۰ ثانیه طول می‌کشد.
         timeout: 90_000,
         retryOptions: { attempts: 1 },
       },

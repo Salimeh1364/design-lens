@@ -7,9 +7,6 @@ type LoadingSkeletonProps = {
  * Holds the same footprint as the finished notes so the panel does not jump
  * when the review arrives. The pulse is skipped when the designer prefers
  * reduced motion.
- *
- * جای یادداشت نهایی را نگه می‌دارد تا با رسیدن نتیجه، صفحه نپرد.
- * اگر کاربر حرکت کم را ترجیح دهد، چشمک‌زدن خاموش است.
  */
 export function LoadingSkeleton({ progress, stageLabel }: LoadingSkeletonProps) {
   const bounded = Math.max(0, Math.min(100, Math.round(progress)));

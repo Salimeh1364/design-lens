@@ -18,10 +18,6 @@ import {
  * Runtime checks for JSON that crossed the network.
  * The hook uses these so a 200 with an unexpected body cannot crash the view.
  * This file is imported by client components — keep it free of Node and the AI SDK.
- *
- * این بررسی‌ها برای JSONی است که از شبکه آمده.
- * اگر پاسخ ۲۰۰ شکل مورد انتظار را نداشته باشد، نما نباید بشکند.
- * این فایل در کلاینت هم وارد می‌شود؛ Node و AI SDK را اینجا وارد نکنید.
  */
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -95,7 +91,6 @@ export function isAnalysisResult(value: unknown): value is AnalysisResult {
   if (!value.critiques.every(isCritiqueItem)) return false;
 
   // Every axis must appear once. A missing score would render a hole in the grid.
-  // هر محور باید دقیقاً یک بار باشد تا در شبکهٔ نمره‌ها جای خالی نماند.
   const seen = new Set(value.scores.map((score) => score.id));
   return SCORE_DIMENSIONS.every((id) => seen.has(id)) && seen.size === SCORE_DIMENSIONS.length;
 }

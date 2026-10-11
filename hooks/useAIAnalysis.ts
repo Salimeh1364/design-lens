@@ -21,10 +21,6 @@ import {
  * Progress is a client-side clock. The model returns a single JSON payload,
  * so the bar moves through phases while the request is open. It is not a
  * byte count. A newer review or an unmount aborts the previous fetch.
- *
- * چرخهٔ عمر یک نقد را نگه می‌دارد: بیکار، در حال بارگذاری، موفق، خطا.
- * نوار پیشرفت ساعت سمت کلاینت است، چون مدل یک JSON کامل برمی‌گرداند.
- * نقد جدید یا خروج از صفحه، درخواست قبلی را لغو می‌کند.
  */
 
 type UseAIAnalysisResult = {
@@ -72,9 +68,6 @@ function readFileAsBase64(file: Blob): Promise<string> {
  * A full-resolution screenshot makes Gemini miss its deadline. The longest
  * edge is drawn down to 1600px and saved as JPEG before it is posted.
  * If the browser cannot draw it, the original file is sent instead.
- *
- * اسکرین‌شات با وضوح کامل از مهلت جمینی رد می‌شود. بلندترین ضلع تا ۱۶۰۰
- * پیکسل کوچک و به JPEG تبدیل می‌شود. اگر مرورگر نتواند بکشد، فایل اصلی می‌رود.
  */
 function shrinkScreenshot(
   file: File,

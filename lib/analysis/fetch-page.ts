@@ -8,10 +8,6 @@ import { isIP } from "node:net";
  * the public site and land on a loopback, link-local, or cloud-metadata
  * address. Each hop is checked again before it is fetched.
  *
- * این ماژول یک صفحهٔ عمومی را به خلاصه‌ای کوتاه برای مدل تبدیل می‌کند.
- * ریدایرکت‌ها دستی دنبال می‌شوند تا پرش به آدرس داخلی یا metadata ابری
- * بی‌بررسی نماند. هر گام پیش از fetch دوباره بررسی می‌شود.
- *
  * Limitation: DNS is checked, then the request is sent. A rebinding DNS
  * record could change in that gap. The hostname block list and the private
  * IP check still close the common cases.

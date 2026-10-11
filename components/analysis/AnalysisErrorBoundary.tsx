@@ -19,9 +19,6 @@ type AnalysisErrorBoundaryState = {
  * Catches a render failure inside the notes view. The data may be valid and
  * the view still throw; this keeps the rest of the page usable and offers
  * another attempt.
- *
- * خطای رندر داخل نمای یادداشت‌ها را می‌گیرد تا بقیهٔ صفحه بماند
- * و طراح بتواند یک بار دیگر تلاش کند.
  */
 export class AnalysisErrorBoundary extends Component<
   AnalysisErrorBoundaryProps,
