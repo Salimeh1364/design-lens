@@ -16,8 +16,6 @@ export type Dictionary = {
   headlineEmphasis: string;
   headlineTail: string;
   lede: string;
-  sectionSource: string;
-  sectionNotes: string;
   tablistLabel: string;
   tabScreenshot: string;
   tabUrl: string;
@@ -93,9 +91,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
     headlineLead: "A ",
     headlineEmphasis: "sharper",
     headlineTail: " read of every screen.",
-    lede: "Upload a screenshot or paste a live URL. Design Lens reviews hierarchy, contrast, spacing, and type — the notes a design review would leave on the work.",
-    sectionSource: "01  —  Source",
-    sectionNotes: "02  —  Notes",
+    lede: "Upload any UI screenshot or design export (from Figma, Adobe XD, or Sketch), or paste a live URL. Design Lens analyzes hierarchy, contrast, spacing, and typography to give you clear, actionable design review notes.",
     tablistLabel: "What to review",
     tabScreenshot: "Screenshot",
     tabUrl: "Website",
@@ -170,9 +166,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
     headlineLead: "Ein ",
     headlineEmphasis: "schärferer",
     headlineTail: " Blick auf jeden Screen.",
-    lede: "Lade einen Screenshot hoch oder füge eine URL ein. Design Lens prüft Hierarchie, Kontrast, Abstände und Typografie — klar formuliert, wie in einem Design-Review.",
-    sectionSource: "01  —  Quelle",
-    sectionNotes: "02  —  Notizen",
+    lede: "Lade einen beliebigen UI-Screenshot oder Design-Export (aus Figma, Adobe XD oder Sketch) hoch, oder füge eine Live-URL ein. Design Lens analysiert Hierarchie, Kontrast, Abstände und Typografie und gibt dir klare, umsetzbare Design-Review-Notizen.",
     tablistLabel: "Was geprüft wird",
     tabScreenshot: "Screenshot",
     tabUrl: "Website",

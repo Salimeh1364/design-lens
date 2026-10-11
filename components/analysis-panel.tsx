@@ -95,12 +95,9 @@ export function AnalysisPanel({
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-mute">
-            {t.sectionNotes}
-          </p>
           <h2
             id="critique-title"
-            className="mt-3 font-serif text-4xl tracking-tight"
+            className="font-serif text-4xl tracking-tight"
           >
             {t.resultsTitle}
           </h2>

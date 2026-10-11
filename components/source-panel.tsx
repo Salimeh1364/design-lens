@@ -82,10 +82,7 @@ export function SourcePanel({ className = "", resetEpoch, onCritique }: SourcePa
 
   return (
     <section id="source" className={`scroll-mt-24 ${className}`}>
-      <p className="font-mono text-[11px] uppercase tracking-[0.18em] text-mute">
-        {t.sectionSource}
-      </p>
-      <div className="mt-3 overflow-hidden rounded-3xl border border-line bg-card shadow-[0_30px_70px_-42px_rgba(22,20,18,0.55)]">
+      <div className="overflow-hidden rounded-3xl border border-line bg-card shadow-[0_30px_70px_-42px_rgba(22,20,18,0.55)]">
         <div
           role="tablist"
           aria-label={t.tablistLabel}
