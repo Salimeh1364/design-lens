@@ -6,12 +6,15 @@ import {
   PageFetchError,
 } from "@/lib/analysis/fetch-page";
 
-/** Launch, navigation, and encoding share this deadline so a stuck browser cannot hold the route. */
-const CAPTURE_TIMEOUT_MS = 8_000;
+/**
+ * Hard stop for launch, navigation, and encoding.
+ * Seven seconds leaves room under Vercel's 10 second function limit.
+ */
+const CAPTURE_TIMEOUT_MS = 7_000;
 /** Longest edge of the JPEG sent to Gemini. Wider captures are scaled down; smaller ones are left alone. */
 const MAX_CAPTURE_WIDTH = 1280;
-/** Lower quality than the intermediate screenshot, which is what keeps the payload small. */
-const JPEG_QUALITY = 55;
+/** JPEG quality for the image Gemini receives. High enough to read type, small enough to send quickly. */
+const JPEG_QUALITY = 80;
 /** One desktop screen. deviceScaleFactor 1 avoids a retina image that is twice as wide as the viewport. */
 const VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 1 } as const;
 
@@ -21,7 +24,7 @@ function cancelled(): DOMException {
 }
 
 /**
- * Resolves with `work`, or rejects when eight seconds pass or the designer cancels.
+ * Resolves with `work`, or rejects when seven seconds pass or the designer cancels.
  * `onTimeout` is expected to kill Chrome. The timer is cleared if `work` settles first,
  * so a finished screenshot is not thrown away.
  */
@@ -85,7 +88,7 @@ async function allowRequest(request: HTTPRequest): Promise<boolean> {
 }
 
 /**
- * Shrinks the captured JPEG to at most 1280px wide and re-encodes it at a lower quality.
+ * Shrinks the captured JPEG to at most 1280px wide and re-encodes it at 80% quality.
  * `withoutEnlargement` leaves an already-small screen at its real size.
  * The return value is raw base64, which is what Gemini's inline image part expects.
  */
@@ -99,9 +102,9 @@ async function compressScreenshot(raw: Uint8Array): Promise<string> {
 }
 
 /**
- * Opens one tab, waits for the load event, and photographs the viewport only.
- * The first screenshot is a higher-quality JPEG. `compressScreenshot` makes the copy Gemini receives.
- * Closing the tab is not awaited, because a stuck close must not hold the eight-second deadline.
+ * Opens one tab, waits until the HTML is parsed, and photographs the viewport only.
+ * `domcontentloaded` returns as soon as the document is ready, instead of waiting for every image and script.
+ * Closing the tab is not awaited, because a stuck close must not hold the seven-second deadline.
  */
 async function shoot(browser: Browser, pageUrl: string): Promise<string> {
   const page = await browser.newPage();
@@ -122,11 +125,11 @@ async function shoot(browser: Browser, pageUrl: string): Promise<string> {
         },
       );
     });
-    await page.goto(pageUrl, { waitUntil: "load", timeout: CAPTURE_TIMEOUT_MS });
-    // quality 70 is only the intermediate file. compressScreenshot re-encodes the copy sent to the model.
+    await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: CAPTURE_TIMEOUT_MS });
+    // The shot itself is also capped, so a hung encoder cannot outlive the route deadline.
     const raw = await page.screenshot({
       type: "jpeg",
-      quality: 70,
+      quality: JPEG_QUALITY,
       captureBeyondViewport: false,
     });
     return compressScreenshot(raw);
@@ -154,35 +157,34 @@ function closeBrowser(browser: Browser | undefined) {
 
 /**
  * Opens a public page in headless Chrome, then shrinks the first screen to a
- * JPEG no wider than 1280px before it is sent to the model.
- * Launch, navigation, and encoding all share one 8 second deadline.
+ * JPEG no wider than 1280px, at 80% quality, before it is sent to the model.
+ * Launch, navigation, and encoding all share one 7 second deadline.
  */
 export async function capturePublicScreenshot(rawUrl: string, signal: AbortSignal): Promise<string> {
   const pageUrl = (await assertPublicDestination(rawUrl)).toString();
   if (signal.aborted) throw cancelled();
 
-  const puppeteer = await import("puppeteer");
   let browser: Browser | undefined;
+  let launching: Promise<Browser> | undefined;
   // Kill is separate from closeBrowser: the deadline must stop a hung launch immediately.
   const kill = () => {
     browser?.process()?.kill();
   };
 
-  const launching = puppeteer.default.launch({
-    headless: true,
-    timeout: CAPTURE_TIMEOUT_MS,
-    protocolTimeout: CAPTURE_TIMEOUT_MS,
-    args: ["--disable-dev-shm-usage", "--disable-gpu", "--no-first-run", "--disable-extensions"],
-  });
-  void launching.then((opened) => {
-    browser = opened;
-  });
-
-  const work = launching.then((opened) => {
+  // Import, launch, and the shot share one clock so the route returns inside 7 seconds.
+  const work = (async () => {
+    const puppeteer = await import("puppeteer");
+    launching = puppeteer.default.launch({
+      headless: true,
+      timeout: CAPTURE_TIMEOUT_MS,
+      protocolTimeout: CAPTURE_TIMEOUT_MS,
+      args: ["--disable-dev-shm-usage", "--disable-gpu", "--no-first-run", "--disable-extensions"],
+    });
+    const opened = await launching;
     browser = opened;
     if (signal.aborted) throw cancelled();
     return shoot(opened, pageUrl);
-  });
+  })();
 
   try {
     return await withDeadline(work, signal, kill);
@@ -196,6 +198,6 @@ export async function capturePublicScreenshot(rawUrl: string, signal: AbortSigna
     throw new PageFetchError("unreachable");
   } finally {
     if (browser) closeBrowser(browser);
-    else void launching.then((opened) => closeBrowser(opened)).catch(() => undefined);
+    else if (launching) void launching.then((opened) => closeBrowser(opened)).catch(() => undefined);
   }
 }

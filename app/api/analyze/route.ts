@@ -221,11 +221,18 @@ export async function POST(request: Request) {
       if (error.reason === "too_large") {
         return analysisError(413, "too_large", "That page is too large to read.");
       }
-      if (error.reason === "unreachable" || error.reason === "timeout") {
+      if (error.reason === "timeout") {
         return analysisError(
           422,
           "page_unreachable",
-          "That page could not be captured in time. Check that it is public, or upload a screenshot.",
+          "That page did not respond in time. Try again in a moment, or upload a screenshot instead.",
+        );
+      }
+      if (error.reason === "unreachable") {
+        return analysisError(
+          422,
+          "page_unreachable",
+          "That page could not be reached. Check that it is public, or upload a screenshot instead.",
         );
       }
       return analysisError(400, "invalid_request", "That address cannot be reviewed.");
