@@ -49,7 +49,8 @@ function isNonPublicIp(address: string): boolean {
     if (first === 172 && second >= 16 && second <= 31) return true;
     if (first === 192 && second === 168) return true;
     if (first === 100 && second >= 64 && second <= 127) return true;
-    if (first === 192 && second === 0) return true;
+    // 192.0.0.0/24 and 192.0.2.0/24 are reserved. The rest of 192.0.0.0/16, such as 192.0.66.18, is public.
+    if (first === 192 && second === 0 && (parts[2] === 0 || parts[2] === 2)) return true;
     if (first === 198 && (second === 18 || second === 19)) return true;
     if (first >= 224) return true;
     return false;

@@ -1,5 +1,5 @@
 import sharp from "sharp";
-import type { Browser, HTTPRequest } from "puppeteer";
+import type { Browser, HTTPRequest, Page } from "puppeteer";
 import {
   assertPublicDestination,
   isObviouslyBlockedUrl,
@@ -7,16 +7,22 @@ import {
 } from "@/lib/analysis/fetch-page";
 
 /**
- * Hard stop for launch, navigation, and encoding.
- * Seven seconds leaves room under Vercel's 10 second function limit.
+ * Hard stop for navigation and encoding, after Chrome is already open.
+ * Six seconds keeps a warm capture inside Vercel's 10 second function limit.
  */
-const CAPTURE_TIMEOUT_MS = 7_000;
+const CAPTURE_TIMEOUT_MS = 6_000;
 /** Longest edge of the JPEG sent to Gemini. Wider captures are scaled down; smaller ones are left alone. */
 const MAX_CAPTURE_WIDTH = 1280;
 /** JPEG quality for the image Gemini receives. High enough to read type, small enough to send quickly. */
 const JPEG_QUALITY = 80;
 /** One desktop screen. deviceScaleFactor 1 avoids a retina image that is twice as wide as the viewport. */
 const VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 1 } as const;
+/** A normal desktop Chrome identity. The default headless name makes some public sites stall or refuse the visit. */
+const DESKTOP_CHROME =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+
+/** One Chrome process for the life of the server. Launching it inside the page deadline left heavy public sites with no time to paint. */
+let browserPromise: Promise<Browser> | null = null;
 
 /** AbortError so the route can tell a cancelled review from a capture timeout. */
 function cancelled(): DOMException {
@@ -24,7 +30,7 @@ function cancelled(): DOMException {
 }
 
 /**
- * Resolves with `work`, or rejects when seven seconds pass or the designer cancels.
+ * Resolves with `work`, or rejects when six seconds pass or the designer cancels.
  * `onTimeout` is expected to kill Chrome. The timer is cleared if `work` settles first,
  * so a finished screenshot is not thrown away.
  */
@@ -88,29 +94,47 @@ async function allowRequest(request: HTTPRequest): Promise<boolean> {
 }
 
 /**
- * Shrinks the captured JPEG to at most 1280px wide and re-encodes it at 80% quality.
- * `withoutEnlargement` leaves an already-small screen at its real size.
+ * Shrinks a captured or uploaded image to at most 1280px wide and re-encodes it
+ * as an 80% JPEG. `withoutEnlargement` leaves an already-small screen at its real size.
  * The return value is raw base64, which is what Gemini's inline image part expects.
  */
-async function compressScreenshot(raw: Uint8Array): Promise<string> {
+async function compressToJpeg(raw: Uint8Array): Promise<string> {
   const compressed = await sharp(Buffer.from(raw))
+    .rotate()
     .resize({ width: MAX_CAPTURE_WIDTH, withoutEnlargement: true })
     .jpeg({ quality: JPEG_QUALITY, mozjpeg: true })
     .toBuffer();
-  if (compressed.byteLength === 0) throw new PageFetchError("unreachable");
+  if (compressed.byteLength === 0) throw new Error("empty image");
   return compressed.toString("base64");
+}
+
+async function compressScreenshot(raw: Uint8Array): Promise<string> {
+  return compressToJpeg(raw);
+}
+
+/** Same 1280px JPEG as a URL capture, for a screenshot the browser already posted. */
+export async function compressImageBase64(data: string): Promise<string> {
+  const normalized = data.replace(/\s/g, "");
+  if (!normalized) throw new Error("empty image");
+  return compressToJpeg(Buffer.from(normalized, "base64"));
 }
 
 /**
  * Opens one tab, waits until the HTML is parsed, and photographs the viewport only.
  * `domcontentloaded` returns as soon as the document is ready, instead of waiting for every image and script.
- * Closing the tab is not awaited, because a stuck close must not hold the seven-second deadline.
+ * Closing the tab is not awaited, because a stuck close must not hold the six-second deadline.
  */
-async function shoot(browser: Browser, pageUrl: string): Promise<string> {
+async function shoot(
+  browser: Browser,
+  pageUrl: string,
+  handle: { page?: Page },
+): Promise<string> {
   const page = await browser.newPage();
+  handle.page = page;
   try {
     page.setDefaultNavigationTimeout(CAPTURE_TIMEOUT_MS);
     page.setDefaultTimeout(CAPTURE_TIMEOUT_MS);
+    await page.setUserAgent({ userAgent: DESKTOP_CHROME });
     await page.setViewport(VIEWPORT);
     // Every request has to continue or abort, or goto waits until the deadline.
     await page.setRequestInterception(true);
@@ -139,65 +163,76 @@ async function shoot(browser: Browser, pageUrl: string): Promise<string> {
 }
 
 /**
- * Asks Chrome to exit, then kills the process if close is still running after one second.
- * Called without awaiting so the route can answer while the browser shuts down.
+ * Starts Chrome once and reuses it. A later review only pays for the page,
+ * so the six-second deadline is not spent launching the browser.
+ * A disconnected process is dropped so the next review starts a fresh one.
  */
-function closeBrowser(browser: Browser | undefined) {
-  if (!browser) return;
-  const killTimer = setTimeout(() => {
-    browser.process()?.kill();
-  }, 1_000);
-  void browser
-    .close()
-    .catch(() => {
-      browser.process()?.kill();
-    })
-    .finally(() => clearTimeout(killTimer));
+function getBrowser(): Promise<Browser> {
+  if (browserPromise) {
+    return browserPromise.then((browser) => {
+      if (browser.connected) return browser;
+      browserPromise = null;
+      return getBrowser();
+    });
+  }
+
+  browserPromise = (async () => {
+    const puppeteer = await import("puppeteer");
+    const browser = await puppeteer.default.launch({
+      headless: true,
+      timeout: 8_000,
+      protocolTimeout: 20_000,
+      args: ["--disable-dev-shm-usage", "--disable-gpu", "--no-first-run", "--disable-extensions"],
+    });
+    const launched = browserPromise;
+    browser.once("disconnected", () => {
+      if (browserPromise === launched) browserPromise = null;
+    });
+    return browser;
+  })().catch((error: unknown) => {
+    browserPromise = null;
+    throw error;
+  });
+
+  return browserPromise;
 }
 
 /**
  * Opens a public page in headless Chrome, then shrinks the first screen to a
  * JPEG no wider than 1280px, at 80% quality, before it is sent to the model.
- * Launch, navigation, and encoding all share one 7 second deadline.
+ * Navigation and encoding share one 6 second deadline. Chrome itself stays open.
  */
 export async function capturePublicScreenshot(rawUrl: string, signal: AbortSignal): Promise<string> {
   const pageUrl = (await assertPublicDestination(rawUrl)).toString();
   if (signal.aborted) throw cancelled();
 
-  let browser: Browser | undefined;
-  let launching: Promise<Browser> | undefined;
-  // Kill is separate from closeBrowser: the deadline must stop a hung launch immediately.
-  const kill = () => {
-    browser?.process()?.kill();
+  let browser: Browser;
+  try {
+    browser = await getBrowser();
+  } catch (error) {
+    if (signal.aborted || (error instanceof Error && error.name === "AbortError")) throw cancelled();
+    if (error instanceof Error && /timeout/i.test(`${error.name} ${error.message}`)) {
+      throw new PageFetchError("timeout");
+    }
+    throw new PageFetchError("unreachable");
+  }
+  if (signal.aborted) throw cancelled();
+
+  const handle: { page?: Page } = {};
+  const stopPage = () => {
+    void handle.page?.close().catch(() => undefined);
   };
 
-  // Import, launch, and the shot share one clock so the route returns inside 7 seconds.
-  const work = (async () => {
-    const puppeteer = await import("puppeteer");
-    launching = puppeteer.default.launch({
-      headless: true,
-      timeout: CAPTURE_TIMEOUT_MS,
-      protocolTimeout: CAPTURE_TIMEOUT_MS,
-      args: ["--disable-dev-shm-usage", "--disable-gpu", "--no-first-run", "--disable-extensions"],
-    });
-    const opened = await launching;
-    browser = opened;
-    if (signal.aborted) throw cancelled();
-    return shoot(opened, pageUrl);
-  })();
-
   try {
-    return await withDeadline(work, signal, kill);
+    return await withDeadline(shoot(browser, pageUrl, handle), signal, stopPage);
   } catch (error) {
-    kill();
+    stopPage();
+    if (!browser.connected) browserPromise = null;
     if (signal.aborted || (error instanceof Error && error.name === "AbortError")) throw cancelled();
     if (error instanceof PageFetchError) throw error;
     if (error instanceof Error && /timeout/i.test(`${error.name} ${error.message}`)) {
       throw new PageFetchError("timeout");
     }
     throw new PageFetchError("unreachable");
-  } finally {
-    if (browser) closeBrowser(browser);
-    else if (launching) void launching.then((opened) => closeBrowser(opened)).catch(() => undefined);
   }
 }

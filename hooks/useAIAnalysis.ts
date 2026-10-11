@@ -40,13 +40,9 @@ const STAGE_MARKS: { stage: AnalysisStage; progress: number }[] = [
   { stage: "writing", progress: 88 },
 ];
 
-/** Longest edge of a screenshot drawn in the browser before it is posted. */
-const SCREENSHOT_MAX_EDGE = 1600;
-
-/** True when fetch was aborted because a newer review replaced this one. */
-function isAbortError(error: unknown): boolean {
-  return error instanceof Error && error.name === "AbortError";
-}
+/** Longest edge drawn in the browser before the file is posted. The server resizes again to the same width. */
+const SCREENSHOT_MAX_EDGE = 1280;
+const CLIENT_JPEG_QUALITY = 0.8;
 
 /** Reads a data URL and returns only the base64 payload after the comma. */
 function readFileAsBase64(file: Blob): Promise<string> {
@@ -69,8 +65,8 @@ function readFileAsBase64(file: Blob): Promise<string> {
 
 /**
  * A full-resolution screenshot makes Gemini miss its deadline. The longest
- * edge is drawn down to 1600px and saved as JPEG before it is posted.
- * If the browser cannot draw it, the original file is sent instead.
+ * edge is drawn down to 1280px and saved as an 80% JPEG before it is posted.
+ * If the browser cannot draw it within eight seconds, the caller sends the original file.
  */
 function shrinkScreenshot(
   file: File,
@@ -78,7 +74,24 @@ function shrinkScreenshot(
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const image = new Image();
+    let settled = false;
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      URL.revokeObjectURL(url);
+      reject(new Error("unreadable"));
+    }, 8_000);
+    const fail = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
+      URL.revokeObjectURL(url);
+      reject(new Error("unreadable"));
+    };
     image.onload = () => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timer);
       URL.revokeObjectURL(url);
       const longest = Math.max(image.width, image.height);
       const scale = longest > SCREENSHOT_MAX_EDGE ? SCREENSHOT_MAX_EDGE / longest : 1;
@@ -103,13 +116,10 @@ function shrinkScreenshot(
           );
         },
         "image/jpeg",
-        0.82,
+        CLIENT_JPEG_QUALITY,
       );
     };
-    image.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("unreadable"));
-    };
+    image.onerror = fail;
     image.src = url;
   });
 }
@@ -146,7 +156,11 @@ async function toAnalysisRequest(
     imageBase64 = shrunk.base64;
     mimeType = shrunk.mimeType;
   } catch {
-    imageBase64 = await readFileAsBase64(source.file);
+    try {
+      imageBase64 = await readFileAsBase64(source.file);
+    } catch {
+      return { code: "invalid_request", message: "" };
+    }
   }
   if (imageBase64.length > MAX_IMAGE_BASE64_CHARS) {
     return { code: "too_large", message: "" };
@@ -237,7 +251,7 @@ export function useAIAnalysis(): UseAIAnalysisResult {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        signal: controller.signal,
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(90_000)]),
         cache: "no-store",
       });
 
@@ -269,9 +283,12 @@ export function useAIAnalysis(): UseAIAnalysisResult {
       setProgress(100);
       setStatus("success");
     } catch (caught) {
-      if (!isCurrent() || isAbortError(caught)) return;
+      if (!isCurrent() || controller.signal.aborted) return;
+      const timedOut =
+        caught instanceof Error &&
+        (caught.name === "TimeoutError" || caught.name === "AbortError" || /timeout/i.test(caught.message));
       setStatus("error");
-      setError({ code: "network", message: "" });
+      setError({ code: timedOut ? "timeout" : "network", message: "" });
     } finally {
       settled = true;
       window.clearInterval(timer);

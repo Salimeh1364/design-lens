@@ -77,7 +77,7 @@ export function AnalysisPanel({
 
   const facets = [t.facetHierarchy, t.facetContrast, t.facetSpacing, t.facetType];
   const sourceLabel = request?.kind === "screenshot" ? t.tabScreenshot : t.tabUrl;
-  const waiting = request !== null && (status === "loading" || status === "idle");
+  const waiting = status === "loading";
   const intro = !request
     ? t.resultsEmptyBody
     : status === "error"
