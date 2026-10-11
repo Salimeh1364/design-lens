@@ -1,6 +1,13 @@
+type LoadingStep = {
+  label: string;
+  state: "done" | "current" | "upcoming";
+};
+
 type LoadingSkeletonProps = {
   progress: number;
   stageLabel: string;
+  /** Ordered steps for a live URL capture. Screenshot reviews keep the single line. */
+  steps?: LoadingStep[];
 };
 
 /**
@@ -8,12 +15,37 @@ type LoadingSkeletonProps = {
  * when the review arrives. The pulse is skipped when the designer prefers
  * reduced motion.
  */
-export function LoadingSkeleton({ progress, stageLabel }: LoadingSkeletonProps) {
+export function LoadingSkeleton({ progress, stageLabel, steps }: LoadingSkeletonProps) {
   const bounded = Math.max(0, Math.min(100, Math.round(progress)));
 
   return (
     <div className="mt-8" aria-hidden={false}>
-      <p className="text-sm text-mute" aria-live="polite">
+      {steps && steps.length > 0 ? (
+        <ol className="space-y-2.5">
+          {steps.map((step, index) => (
+            <li key={step.label} className="flex items-center gap-3 text-sm">
+              <span
+                aria-hidden="true"
+                className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-medium ${
+                  step.state === "current"
+                    ? "border-accent bg-accent-soft text-ink"
+                    : step.state === "done"
+                      ? "border-ink bg-ink text-paper"
+                      : "border-line text-mute"
+                }`}
+              >
+                {step.state === "done" ? "✓" : index + 1}
+              </span>
+              <span className={step.state === "upcoming" ? "text-mute" : "text-ink"}>
+                {step.label}
+              </span>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="text-sm text-mute">{stageLabel}</p>
+      )}
+      <p className="sr-only" aria-live="polite">
         {stageLabel}
       </p>
       <div

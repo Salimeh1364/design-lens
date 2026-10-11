@@ -40,6 +40,12 @@ const STAGE_MARKS: { stage: AnalysisStage; progress: number }[] = [
   { stage: "writing", progress: 88 },
 ];
 
+/** URL reviews wait on a live capture, so these steps stay up longer than a screenshot. */
+const URL_STAGE_MARKS: { stage: AnalysisStage; progress: number }[] = [
+  { stage: "sending", progress: 40 },
+  { stage: "reviewing", progress: 74 },
+];
+
 /** Longest edge drawn in the browser before the file is posted. The server resizes again to the same width. */
 const SCREENSHOT_MAX_EDGE = 1280;
 const CLIENT_JPEG_QUALITY = 0.8;
@@ -224,16 +230,20 @@ export function useAIAnalysis(): UseAIAnalysisResult {
     setError(null);
 
     let settled = false;
-    let markIndex = 0;
+    const isUrl = source.kind === "url";
+    const marks = isUrl ? URL_STAGE_MARKS : STAGE_MARKS;
+    // Screenshot marks already include the starting phase, so the first tick skips it.
+    // A URL starts on "connecting" and the first tick moves to the capture step.
+    let markIndex = isUrl ? -1 : 0;
     // The model returns one payload, so the bar is a timer, not upload progress.
     const timer = window.setInterval(() => {
       if (settled || !isCurrent()) return;
-      markIndex = Math.min(markIndex + 1, STAGE_MARKS.length - 1);
-      const mark = STAGE_MARKS[markIndex];
+      markIndex = Math.min(markIndex + 1, marks.length - 1);
+      const mark = marks[markIndex];
       if (!mark) return;
       setStage(mark.stage);
       setProgress((current) => Math.max(current, mark.progress));
-    }, 700);
+    }, isUrl ? 3_200 : 700);
 
     try {
       const payload = await toAnalysisRequest(source, locale);
@@ -244,8 +254,11 @@ export function useAIAnalysis(): UseAIAnalysisResult {
         return;
       }
 
-      setStage("sending");
-      setProgress((current) => Math.max(current, 28));
+      // A URL stays on "connecting" until the slower step clock advances.
+      if (!isUrl) {
+        setStage("sending");
+        setProgress((current) => Math.max(current, 28));
+      }
 
       const response = await fetch("/api/analyze", {
         method: "POST",

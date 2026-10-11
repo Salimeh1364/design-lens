@@ -35,6 +35,19 @@ const STAGE_COPY: Record<AnalysisStage, keyof Dictionary> = {
   writing: "progressWriting",
 };
 
+/** Live captures walk through three visible steps. Writing still sits on the last one. */
+const URL_STEP_COPY: { stage: AnalysisStage; key: keyof Dictionary }[] = [
+  { stage: "preparing", key: "urlStepConnect" },
+  { stage: "sending", key: "urlStepCapture" },
+  { stage: "reviewing", key: "urlStepAnalyze" },
+];
+
+function urlStepIndex(stage: AnalysisStage): number {
+  if (stage === "preparing") return 0;
+  if (stage === "sending") return 1;
+  return 2;
+}
+
 /** API error code to the localized sentence. The server `message` is only a fallback. */
 const ERROR_COPY: Record<AnalysisErrorCode, keyof Dictionary> = {
   invalid_request: "errorInvalid",
@@ -127,7 +140,27 @@ export function AnalysisPanel({
       )}
 
       {waiting ? (
-        <LoadingSkeleton progress={progress} stageLabel={t[STAGE_COPY[stage]]} />
+        <LoadingSkeleton
+          progress={progress}
+          stageLabel={
+            request?.kind === "url"
+              ? t[URL_STEP_COPY[urlStepIndex(stage)]?.key ?? "urlStepAnalyze"]
+              : t[STAGE_COPY[stage]]
+          }
+          steps={
+            request?.kind === "url"
+              ? URL_STEP_COPY.map((step, index) => ({
+                  label: t[step.key],
+                  state:
+                    index < urlStepIndex(stage)
+                      ? "done"
+                      : index === urlStepIndex(stage)
+                        ? "current"
+                        : "upcoming",
+                }))
+              : undefined
+          }
+        />
       ) : null}
 
       {status === "error" && error ? (

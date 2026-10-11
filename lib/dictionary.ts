@@ -56,6 +56,9 @@ export type Dictionary = {
   progressSending: string;
   progressReviewing: string;
   progressWriting: string;
+  urlStepConnect: string;
+  urlStepCapture: string;
+  urlStepAnalyze: string;
   retry: string;
   resetReview: string;
   overallLabel: string;
@@ -109,7 +112,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
     previewAlt: "Selected screenshot",
     urlLabel: "Website address",
     urlPlaceholder: "https://your-product.com",
-    urlHint: "A public page. Design Lens captures the screen on the server. The API key stays there.",
+    urlHint: "Live URL captures take 5–10 seconds. Upload a screenshot for a faster result.",
     critiqueUrl: "Critique this page",
     urlInvalid: "Enter a valid website address, such as your-product.com.",
     resultsTitle: "Critique notes",
@@ -133,6 +136,9 @@ export const dictionaries: Record<Locale, Dictionary> = {
     progressSending: "Sending it for review",
     progressReviewing: "Reading hierarchy, space, and type",
     progressWriting: "Writing the notes",
+    urlStepConnect: "Connecting to website...",
+    urlStepCapture: "Capturing page screenshot...",
+    urlStepAnalyze: "Analyzing design hierarchy...",
     retry: "Try again",
     resetReview: "Try another screen",
     overallLabel: "Overall",
@@ -184,7 +190,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
     previewAlt: "Ausgewählter Screenshot",
     urlLabel: "Website-Adresse",
     urlPlaceholder: "https://dein-produkt.de",
-    urlHint: "Eine öffentliche Seite. Design Lens nimmt den Screen auf dem Server auf. Der API-Schlüssel bleibt dort.",
+    urlHint: "Live-Aufnahmen dauern 5–10 Sekunden. Lade einen Screenshot hoch, wenn du ein schnelleres Ergebnis möchtest.",
     critiqueUrl: "Diese Seite prüfen",
     urlInvalid: "Gib eine gültige Website-Adresse ein, zum Beispiel dein-produkt.de.",
     resultsTitle: "Kritiknotizen",
@@ -208,6 +214,9 @@ export const dictionaries: Record<Locale, Dictionary> = {
     progressSending: "Wird zur Prüfung gesendet",
     progressReviewing: "Hierarchie, Abstände und Schrift werden gelesen",
     progressWriting: "Notizen werden geschrieben",
+    urlStepConnect: "Verbindung zur Website wird hergestellt...",
+    urlStepCapture: "Screenshot der Seite wird aufgenommen...",
+    urlStepAnalyze: "Design-Hierarchie wird analysiert...",
     retry: "Erneut versuchen",
     resetReview: "Anderen Screen wählen",
     overallLabel: "Gesamt",
