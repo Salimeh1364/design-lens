@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import sharp from "sharp";
 import type { Browser, HTTPRequest, Page } from "puppeteer";
 import {
@@ -23,6 +25,14 @@ const DESKTOP_CHROME =
 
 /** One Chrome process for the life of the server. Launching it inside the page deadline left heavy public sites with no time to paint. */
 let browserPromise: Promise<Browser> | null = null;
+/**
+ * Chromium build for Vercel's Linux. The Chrome that Puppeteer uses on a
+ * laptop does not start there, so the capture used to hit the six-second
+ * deadline before the page was open.
+ * See https://github.com/Sparticuz/chromium/releases/tag/v153.0.0
+ */
+const REMOTE_CHROMIUM_PACK =
+  "https://github.com/Sparticuz/chromium/releases/download/v153.0.0/chromium-v153.0.0-pack.x64.tar";
 
 /** AbortError so the route can tell a cancelled review from a capture timeout. */
 function cancelled(): DOMException {
@@ -162,6 +172,43 @@ async function shoot(
   }
 }
 
+/** Desktop Chrome for local reviews. Vercel does not have this binary. */
+async function launchLocalBrowser(): Promise<Browser> {
+  const puppeteer = await import("puppeteer");
+  return puppeteer.default.launch({
+    headless: true,
+    timeout: 8_000,
+    protocolTimeout: 20_000,
+    args: ["--disable-dev-shm-usage", "--disable-gpu", "--no-first-run", "--disable-extensions"],
+  });
+}
+
+/**
+ * Opens the Linux Chromium build on Vercel.
+ * A pack prepared at deploy time is used when it is present. Otherwise the
+ * same pack is downloaded into the function's temp folder.
+ */
+async function launchServerlessBrowser(): Promise<Browser> {
+  const chromium = (await import("@sparticuz/chromium")).default;
+  const puppeteer = await import("puppeteer-core");
+  const localPack = join(process.cwd(), "vendor", "chromium");
+  const pack = existsSync(join(localPack, "chromium.br")) ? localPack : REMOTE_CHROMIUM_PACK;
+  const executablePath = await chromium.executablePath(pack);
+  const browser = await puppeteer.default.launch({
+    args: chromium.args,
+    executablePath,
+    headless: true,
+    defaultViewport: {
+      width: VIEWPORT.width,
+      height: VIEWPORT.height,
+      deviceScaleFactor: VIEWPORT.deviceScaleFactor,
+    },
+    timeout: 45_000,
+    protocolTimeout: 45_000,
+  });
+  return browser as unknown as Browser;
+}
+
 /**
  * Starts Chrome once and reuses it. A later review only pays for the page,
  * so the six-second deadline is not spent launching the browser.
@@ -177,13 +224,7 @@ function getBrowser(): Promise<Browser> {
   }
 
   browserPromise = (async () => {
-    const puppeteer = await import("puppeteer");
-    const browser = await puppeteer.default.launch({
-      headless: true,
-      timeout: 8_000,
-      protocolTimeout: 20_000,
-      args: ["--disable-dev-shm-usage", "--disable-gpu", "--no-first-run", "--disable-extensions"],
-    });
+    const browser = process.env.VERCEL === "1" ? await launchServerlessBrowser() : await launchLocalBrowser();
     const launched = browserPromise;
     browser.once("disconnected", () => {
       if (browserPromise === launched) browserPromise = null;
@@ -210,6 +251,8 @@ export async function capturePublicScreenshot(rawUrl: string, signal: AbortSigna
   try {
     browser = await getBrowser();
   } catch (error) {
+    const detail = error instanceof Error ? error.message.slice(0, 180) : "unknown";
+    console.error("capture_browser_failed", detail);
     if (signal.aborted || (error instanceof Error && error.name === "AbortError")) throw cancelled();
     if (error instanceof Error && /timeout/i.test(`${error.name} ${error.message}`)) {
       throw new PageFetchError("timeout");
