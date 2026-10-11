@@ -18,11 +18,12 @@ export default function Home() {
   const [sourceEpoch, setSourceEpoch] = useState(0);
   const { status, stage, progress, result, error, analyze, reset } = useAIAnalysis();
 
+  /** Stores the source, starts the review, and scrolls the notes into view. */
   function handleCritique(next: AnalysisSource) {
     // Step 1 — remember the source so the notes can name it and retry it.
     // A screenshot still carries the File. The hook encodes that file to
     // base64 before the request leaves the browser. A URL is forwarded as
-    // the public address; the server reads the page.
+    // the public address; the server captures the screen.
     setRequest(next);
     void analyze(next, locale);
 
@@ -35,6 +36,7 @@ export default function Home() {
     });
   }
 
+  /** Drops the notes, cancels a late response, and resets the source form. */
   function clearReview() {
     // One step back to the empty page: drop the notes, cancel a late
     // response, and ask the source form to forget its file and URL.
@@ -50,6 +52,7 @@ export default function Home() {
     });
   }
 
+  /** Runs the same source again in the language currently on screen. */
   function retry() {
     if (!request) return;
     // Retry uses the language on screen now, which may differ from the

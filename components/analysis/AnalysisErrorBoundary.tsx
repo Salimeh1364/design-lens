@@ -26,14 +26,17 @@ export class AnalysisErrorBoundary extends Component<
 > {
   state: AnalysisErrorBoundaryState = { hasError: false };
 
+  /** React calls this during render. It only records that the notes view failed. */
   static getDerivedStateFromError(): AnalysisErrorBoundaryState {
     return { hasError: true };
   }
 
+  /** Logs the error name and component stack. The message may contain screen text, so it is left out. */
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error("Analysis notes failed to render", error.name, info.componentStack);
   }
 
+  /** A new review changes `resetKey`, which clears a previous render crash. */
   componentDidUpdate(previous: AnalysisErrorBoundaryProps) {
     if (previous.resetKey !== this.props.resetKey && this.state.hasError) {
       this.setState({ hasError: false });
@@ -48,6 +51,7 @@ export class AnalysisErrorBoundary extends Component<
   }
 }
 
+/** Shown in place of the notes when the result card throws. The rest of the page stays up. */
 function AnalysisRenderFallback({ onRetry }: { onRetry: () => void }) {
   const { t } = useLanguage();
 

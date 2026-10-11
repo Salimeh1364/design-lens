@@ -10,6 +10,11 @@ type UrlCaptureProps = {
   onSubmit: (url: string) => void;
 };
 
+/**
+ * Accepts a bare host or a full URL and returns an absolute http(s) address.
+ * A missing scheme is treated as https. Localhost is allowed here; the server
+ * still refuses it before capture.
+ */
 export function parseWebsiteUrl(raw: string) {
   const trimmed = raw.trim();
   if (!trimmed) return null;
@@ -30,6 +35,7 @@ export function parseWebsiteUrl(raw: string) {
   }
 }
 
+/** Website field. Submit normalizes the address and hands it to the page. */
 export function UrlCapture({ value, onChange, onSubmit }: UrlCaptureProps) {
   const { t } = useLanguage();
   const fieldId = useId();

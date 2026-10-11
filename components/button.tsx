@@ -5,6 +5,7 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: "md" | "sm";
 };
 
+/** Filled and quiet variants. Disabled buttons keep their color and only drop opacity. */
 const variants = {
   primary: "bg-ink text-paper hover:bg-[#2c2824] disabled:hover:bg-ink",
   ghost: "border border-line bg-card text-ink hover:border-ink/25",
@@ -15,6 +16,7 @@ const sizes = {
   sm: "h-10 px-4",
 };
 
+/** Shared button. `type` defaults to button so it does not submit a surrounding form. */
 export function Button({
   variant = "primary",
   size = "md",

@@ -1,5 +1,9 @@
 import type { Locale } from "./types";
 
+/**
+ * UI copy for English and German. Components read `t` from the language
+ * provider. A `{label}` placeholder is filled by `fillLabel`.
+ */
 export type Dictionary = {
   brandNav: string;
   navSource: string;
@@ -234,6 +238,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
   },
 };
 
+/** Replaces every `{label}` in a sentence with the source name. */
 export function fillLabel(template: string, label: string) {
   return template.replaceAll("{label}", label);
 }

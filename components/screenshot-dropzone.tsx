@@ -15,6 +15,7 @@ type ScreenshotDropzoneProps = {
   onCritique: (file: File) => void;
 };
 
+/** Formats a byte size as KB or MB in the designer's locale. */
 function formatFileSize(bytes: number, locale: string) {
   const formatter = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
   if (bytes < 1024 * 1024) {
@@ -23,6 +24,10 @@ function formatFileSize(bytes: number, locale: string) {
   return `${formatter.format(bytes / (1024 * 1024))} MB`;
 }
 
+/**
+ * Drop, browse, and paste target for a screenshot.
+ * Choosing a file only stores it. Critique this screen is what starts the review.
+ */
 export function ScreenshotDropzone({
   file,
   previewUrl,
@@ -33,10 +38,12 @@ export function ScreenshotDropzone({
   const inputId = useId();
   const errorId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  // dragenter and dragleave also fire for children, so a depth count keeps the highlight honest.
   const dragDepth = useRef(0);
   const [dragging, setDragging] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  /** Accepts a PNG, JPEG, or WebP under 10 MB and names a clipboard image that has no filename. */
   function takeFile(next: File | null): File | null {
     if (!next) return null;
     const named = next.name.trim() ? next : namedClipboardFile(next);
@@ -88,10 +95,12 @@ export function ScreenshotDropzone({
     takeFile(pasted);
   }
 
+  /** Opens the hidden file input. */
   function openPicker() {
     inputRef.current?.click();
   }
 
+  /** Clears the chosen file and the input value so the same file can be chosen again. */
   function clearFile() {
     setError(null);
     if (inputRef.current) inputRef.current.value = "";
@@ -228,8 +237,7 @@ export function ScreenshotDropzone({
 }
 
 /**
- * `files` is filled by most desktop pastes. Some tools only put the bitmap
- * on `items`, so that list is the fallback.
+ * Highlight classes for the drop frame. Focus and drag use the accent; the resting state stays quiet.
  */
 function frameClass(dragging: boolean) {
   const focus =
@@ -253,6 +261,7 @@ function PasteCatcher({
   label: string;
   onPaste: (event: ReactClipboardEvent<HTMLDivElement>) => void;
 }) {
+  /** Blocks typed characters. Tab and shortcuts still work so the control stays keyboard reachable. */
   function blockTyping(event: KeyboardEvent<HTMLDivElement>) {
     if (event.key === "Tab") return;
     if (event.metaKey || event.ctrlKey || event.altKey) return;
@@ -276,6 +285,10 @@ function PasteCatcher({
   );
 }
 
+/**
+ * `files` is filled by most desktop pastes. Some tools only put the bitmap
+ * on `items`, so that list is the fallback.
+ */
 function clipboardImage(data: DataTransfer | null): File | null {
   if (!data) return null;
 
@@ -290,6 +303,7 @@ function clipboardImage(data: DataTransfer | null): File | null {
   return null;
 }
 
+/** Clipboard images often have an empty name. A stable name lets the notes panel label the review. */
 function namedClipboardFile(file: File): File {
   const extension =
     file.type === "image/jpeg" ? "jpg" : file.type === "image/webp" ? "webp" : "png";
@@ -299,6 +313,7 @@ function namedClipboardFile(file: File): File {
   });
 }
 
+/** Corner marks used in the empty drop state. */
 function FrameIcon() {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" aria-hidden="true">

@@ -13,11 +13,13 @@ import { isIP } from "node:net";
  * IP check still close the common cases.
  */
 
+/** Limits for the text outline. The live URL review captures a screenshot and does not use these. */
 const MAX_HTML_BYTES = 1_500_000;
 const MAX_REDIRECTS = 3;
 const FETCH_TIMEOUT_MS = 8_000;
 const OUTLINE_CHARS = 12_000;
 
+/** Why a page could not be read or captured. The route maps `reason` onto an API error code. */
 export class PageFetchError extends Error {
   readonly reason: "blocked" | "unreachable" | "not_html" | "too_large" | "timeout";
 
@@ -28,6 +30,11 @@ export class PageFetchError extends Error {
   }
 }
 
+/**
+ * True for loopback, private, link-local, CGNAT, and multicast addresses, in IPv4 and IPv6.
+ * IPv4-mapped IPv6 addresses are unwrapped and checked as IPv4.
+ * An address we cannot classify is treated as non-public.
+ */
 function isNonPublicIp(address: string): boolean {
   const version = isIP(address);
   if (version === 0) return true;
@@ -37,6 +44,7 @@ function isNonPublicIp(address: string): boolean {
     if (parts.length !== 4 || parts.some((part) => !Number.isInteger(part))) return true;
     const [first, second] = parts;
     if (first === 0 || first === 10 || first === 127) return true;
+    // Link-local, including the cloud metadata address 169.254.169.254.
     if (first === 169 && second === 254) return true;
     if (first === 172 && second >= 16 && second <= 31) return true;
     if (first === 192 && second === 168) return true;
@@ -75,6 +83,7 @@ function isNonPublicIp(address: string): boolean {
   return false;
 }
 
+/** Rejects non-http URLs, credentials, localhost, and IP literals that are not public. DNS is separate. */
 function assertPublicUrl(rawUrl: string): URL {
   let url: URL;
   try {
@@ -103,6 +112,7 @@ function assertPublicUrl(rawUrl: string): URL {
   return url;
 }
 
+/** Resolves the hostname and rejects the request if any answer is a non-public address. */
 async function assertPublicDns(hostname: string): Promise<void> {
   if (isIP(hostname)) {
     if (isNonPublicIp(hostname)) throw new PageFetchError("blocked");
@@ -121,6 +131,7 @@ async function assertPublicDns(hostname: string): Promise<void> {
   }
 }
 
+/** Reads the body up to `maxBytes`, then stops. A longer page is `too_large` rather than buffered whole. */
 async function readLimitedText(response: Response, maxBytes: number): Promise<string> {
   const reader = response.body?.getReader();
   if (!reader) throw new PageFetchError("unreachable");
@@ -156,6 +167,7 @@ async function readLimitedText(response: Response, maxBytes: number): Promise<st
   return new TextDecoder("utf-8", { fatal: false }).decode(buffer);
 }
 
+/** Turns the handful of entities that show up in titles and headings back into characters. */
 function decodeEntities(value: string): string {
   return value
     .replace(/&nbsp;/gi, " ")
@@ -176,10 +188,12 @@ function decodeEntities(value: string): string {
     });
 }
 
+/** Drops tags and collapses whitespace so a heading or button label is one line of text. */
 function visibleText(fragment: string): string {
   return decodeEntities(fragment.replace(/<[^>]+>/g, " ")).replace(/\s+/g, " ").trim();
 }
 
+/** Collects up to `limit` short text matches. Empty matches are skipped. */
 function collect(html: string, pattern: RegExp, limit: number): string[] {
   const found: string[] = [];
   for (const match of html.matchAll(pattern)) {
@@ -230,6 +244,7 @@ function outlinePage(pageUrl: string, html: string): string {
   return outline.slice(0, OUTLINE_CHARS);
 }
 
+/** Accepts an HTML content type, or a body that starts like an HTML document. */
 function looksLikeHtml(html: string, contentType: string): boolean {
   if (contentType.includes("text/html") || contentType.includes("application/xhtml")) {
     return true;
@@ -254,6 +269,12 @@ export function isObviouslyBlockedUrl(rawUrl: string): boolean {
   }
 }
 
+/**
+ * Fetches a public HTML page and returns a short outline of its title, headings, and text.
+ * Redirects are followed manually so each hop is checked before it is requested.
+ * Available when a caller needs a text reading of a public page.
+ * The live URL review captures a screenshot instead of calling this.
+ */
 export async function readPublicPage(rawUrl: string, signal: AbortSignal): Promise<string> {
   let current = assertPublicUrl(rawUrl);
 
@@ -277,6 +298,7 @@ export async function readPublicPage(rawUrl: string, signal: AbortSignal): Promi
 
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get("location");
+      // A missing Location, or more hops than MAX_REDIRECTS, is treated as unreachable.
       if (!location || hop === MAX_REDIRECTS) throw new PageFetchError("unreachable");
       current = assertPublicUrl(new URL(location, current).toString());
       continue;

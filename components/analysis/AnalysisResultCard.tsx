@@ -10,6 +10,7 @@ import {
   type Severity,
 } from "@/types/analysis";
 
+/** Axis id to the localized facet name. */
 const SCORE_LABEL: Record<ScoreDimension, keyof Dictionary> = {
   visualHierarchy: "facetHierarchy",
   contrast: "facetContrast",
@@ -17,12 +18,14 @@ const SCORE_LABEL: Record<ScoreDimension, keyof Dictionary> = {
   typography: "facetType",
 };
 
+/** Severity to the localized chip label. */
 const SEVERITY_LABEL: Record<Severity, keyof Dictionary> = {
   high: "severityHigh",
   medium: "severityMedium",
   low: "severityLow",
 };
 
+/** Chip colors. High uses the accent; medium and low stay on the paper background. */
 const SEVERITY_CLASS: Record<Severity, string> = {
   high: "border-accent/40 bg-accent-soft text-accent",
   medium: "border-severity-medium bg-paper text-ink",
@@ -40,6 +43,7 @@ type AnalysisResultCardProps = {
 export function AnalysisResultCard({ result }: AnalysisResultCardProps) {
   const { t } = useLanguage();
 
+  // Keep the four axes in contract order even if the model returned them differently.
   const orderedScores = SCORE_DIMENSIONS.flatMap((id) => {
     const score = result.scores.find((item) => item.id === id);
     return score ? [score] : [];

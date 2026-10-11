@@ -2,6 +2,7 @@ type IconProps = {
   className?: string;
 };
 
+/** Brand mark: a lens with a small accent center. Decorative, so it is hidden from assistive tech. */
 export function LensMark({ className = "h-8 w-8" }: IconProps) {
   return (
     <svg viewBox="0 0 32 32" className={className} aria-hidden="true">
@@ -33,6 +34,7 @@ export function LensMark({ className = "h-8 w-8" }: IconProps) {
   );
 }
 
+/** Tab icon for the screenshot source. */
 export function ImageIcon({ className = "h-4 w-4" }: IconProps) {
   return (
     <svg viewBox="0 0 16 16" className={className} aria-hidden="true">
@@ -58,6 +60,7 @@ export function ImageIcon({ className = "h-4 w-4" }: IconProps) {
   );
 }
 
+/** Tab icon for the website source. */
 export function LinkIcon({ className = "h-4 w-4" }: IconProps) {
   return (
     <svg viewBox="0 0 16 16" className={className} aria-hidden="true">

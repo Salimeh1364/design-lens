@@ -11,6 +11,7 @@ import {
 import { dictionaries, type Dictionary } from "@/lib/dictionary";
 import type { Locale } from "@/lib/types";
 
+/** Cookie read by the root layout so the next request renders in the same language. */
 const COOKIE_KEY = "design-lens-locale";
 
 type LanguageContextValue = {
@@ -21,10 +22,15 @@ type LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
+/** Writes the locale cookie for one year. The layout reads it on the next request. */
 function writeLocaleCookie(locale: Locale) {
   document.cookie = `${COOKIE_KEY}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
 }
 
+/**
+ * Holds the active language and its dictionary. `setLocale` updates the
+ * document language and the cookie so a refresh keeps the choice.
+ */
 export function LanguageProvider({
   initialLocale,
   children,
@@ -54,6 +60,7 @@ export function LanguageProvider({
   );
 }
 
+/** The current locale, its dictionary, and the setter. Throws if used outside the provider. */
 export function useLanguage() {
   const value = useContext(LanguageContext);
   if (!value) {

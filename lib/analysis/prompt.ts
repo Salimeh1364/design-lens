@@ -5,10 +5,12 @@ import type { AnalysisLocale } from "@/types/analysis";
  * specific, evidenced, and written in the designer's language.
  */
 
+/** English or German, matching the locale sent with the review. */
 function languageName(locale: AnalysisLocale): string {
   return locale === "de" ? "German" : "English";
 }
 
+/** Instructions that apply to every review: scoring axes, evidence rules, and the output language. */
 export function buildSystemPrompt(locale: AnalysisLocale): string {
   const language = languageName(locale);
 
@@ -36,10 +38,12 @@ Rules:
 - evidence.location names a place ("header", "primary button", "first heading"), not "the page".`;
 }
 
+/** User turn for a file the designer uploaded or pasted. */
 export function buildScreenshotPrompt(label: string): string {
   return `Review this screenshot. Source label: ${label}. Base every note on what is visible in the image.`;
 }
 
+/** User turn for a page captured on the server. The image is attached separately. */
 export function buildUrlPrompt(label: string): string {
   return `Review this screenshot of a live page. Source label: ${label}. Base every note on what is visible in the image.`;
 }

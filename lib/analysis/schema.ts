@@ -16,6 +16,10 @@ import {
  * - `parseAnalysisRequest` checks the browser payload before any model call.
  */
 
+/**
+ * Pieces of the critique object. Length limits match the checks in `guards.ts`,
+ * so a value the model is allowed to emit is a value the client can render.
+ */
 const evidenceSchema = z.object({
   observation: z.string().min(1).max(500),
   location: z.string().min(1).max(200),
@@ -35,6 +39,7 @@ const critiqueSchema = z.object({
   evidence: z.array(evidenceSchema).min(1).max(4),
 });
 
+/** Shape Gemini must return. Kept free of transforms so it can become JSON Schema. */
 export const analysisResultSchema = z.object({
   overallScore: z.number().min(0).max(100),
   summary: z.string().min(1).max(1000),
@@ -42,6 +47,7 @@ export const analysisResultSchema = z.object({
   critiques: z.array(critiqueSchema).min(2).max(6),
 });
 
+/** Standard base64, with optional padding. Whitespace is removed before this runs. */
 const base64Pattern = /^[A-Za-z0-9+/]+={0,2}$/;
 
 const analysisRequestSchema = z.discriminatedUnion("kind", [
@@ -73,6 +79,7 @@ export function analysisResultJsonSchema(): unknown {
   return toGeminiSchema(analysisResultSchema.toJSONSchema());
 }
 
+/** Walks a JSON Schema and drops keys Gemini rejects, then records property order on each object. */
 function toGeminiSchema(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(toGeminiSchema);
   if (typeof value !== "object" || value === null) return value;
@@ -90,12 +97,14 @@ function toGeminiSchema(value: unknown): unknown {
     result.properties !== null &&
     !Array.isArray(result.properties)
   ) {
+    // Gemini uses this order when it fills the object. The UI expects the four axes in SCORE_DIMENSIONS order.
     result.propertyOrdering = Object.keys(result.properties);
   }
 
   return result;
 }
 
+/** True for a plain object. Arrays are excluded because a JSON array is not a request body. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -124,6 +133,7 @@ function normalizeScreenshotBody(input: unknown): unknown {
   };
 }
 
+/** True for http and https URLs. Host safety is checked again in the route before capture. */
 function isPublicHttpUrl(value: string): boolean {
   try {
     const url = new URL(value);
@@ -137,6 +147,11 @@ export type RequestParseResult =
   | { ok: true; request: AnalysisRequest }
   | { ok: false; reason: "invalid" | "too_large" };
 
+/**
+ * Validates the JSON body from the browser.
+ * An oversized screenshot is reported separately from a malformed body so the
+ * route can answer 413 instead of 400. A data-URL prefix is stripped first.
+ */
 export function parseAnalysisRequest(input: unknown): RequestParseResult {
   if (
     isRecord(input) &&
@@ -180,12 +195,14 @@ export function parseAnalysisRequest(input: unknown): RequestParseResult {
   };
 }
 
+/** Trims a model string and rejects empty or over-long text. */
 function requiredText(value: string, max: number): string | null {
   const trimmed = value.trim();
   if (!trimmed || trimmed.length > max) return null;
   return trimmed;
 }
 
+/** Scores are whole numbers from 0 to 100. The model sometimes returns a float. */
 function roundScore(value: number): number {
   return Math.min(100, Math.max(0, Math.round(value)));
 }

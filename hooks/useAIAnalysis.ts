@@ -40,12 +40,15 @@ const STAGE_MARKS: { stage: AnalysisStage; progress: number }[] = [
   { stage: "writing", progress: 88 },
 ];
 
+/** Longest edge of a screenshot drawn in the browser before it is posted. */
 const SCREENSHOT_MAX_EDGE = 1600;
 
+/** True when fetch was aborted because a newer review replaced this one. */
 function isAbortError(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
 
+/** Reads a data URL and returns only the base64 payload after the comma. */
 function readFileAsBase64(file: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -111,6 +114,11 @@ function shrinkScreenshot(
   });
 }
 
+/**
+ * Turns the designer's source into the JSON body for `/api/analyze`.
+ * A URL is forwarded as text. A screenshot is scaled on a canvas first; if the
+ * browser cannot draw it, the original file is encoded instead.
+ */
 async function toAnalysisRequest(
   source: AnalysisSource,
   locale: Locale,
@@ -152,6 +160,7 @@ async function toAnalysisRequest(
   };
 }
 
+/** Parses the response when it is JSON. An empty or non-JSON body becomes null so the caller can show a generic error. */
 async function readResponseBody(response: Response): Promise<unknown> {
   const raw = await response.text();
   if (!raw) return null;
@@ -162,6 +171,7 @@ async function readResponseBody(response: Response): Promise<unknown> {
   }
 }
 
+/** State for one in-flight review. `analyze` posts to `/api/analyze`; `reset` cancels it and clears the notes. */
 export function useAIAnalysis(): UseAIAnalysisResult {
   const [status, setStatus] = useState<AnalysisStatus>("idle");
   const [stage, setStage] = useState<AnalysisStage>("preparing");
@@ -201,6 +211,7 @@ export function useAIAnalysis(): UseAIAnalysisResult {
 
     let settled = false;
     let markIndex = 0;
+    // The model returns one payload, so the bar is a timer, not upload progress.
     const timer = window.setInterval(() => {
       if (settled || !isCurrent()) return;
       markIndex = Math.min(markIndex + 1, STAGE_MARKS.length - 1);

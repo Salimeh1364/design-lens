@@ -6,16 +6,25 @@ import {
   PageFetchError,
 } from "@/lib/analysis/fetch-page";
 
-/** The screenshot engine must return or fail inside this window. */
+/** Launch, navigation, and encoding share this deadline so a stuck browser cannot hold the route. */
 const CAPTURE_TIMEOUT_MS = 8_000;
+/** Longest edge of the JPEG sent to Gemini. Wider captures are scaled down; smaller ones are left alone. */
 const MAX_CAPTURE_WIDTH = 1280;
+/** Lower quality than the intermediate screenshot, which is what keeps the payload small. */
 const JPEG_QUALITY = 55;
+/** One desktop screen. deviceScaleFactor 1 avoids a retina image that is twice as wide as the viewport. */
 const VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 1 } as const;
 
+/** AbortError so the route can tell a cancelled review from a capture timeout. */
 function cancelled(): DOMException {
   return new DOMException("The review was cancelled.", "AbortError");
 }
 
+/**
+ * Resolves with `work`, or rejects when eight seconds pass or the designer cancels.
+ * `onTimeout` is expected to kill Chrome. The timer is cleared if `work` settles first,
+ * so a finished screenshot is not thrown away.
+ */
 function withDeadline<T>(work: Promise<T>, parent: AbortSignal, onTimeout: () => void): Promise<T> {
   if (parent.aborted) return Promise.reject(cancelled());
 
@@ -47,6 +56,12 @@ function withDeadline<T>(work: Promise<T>, parent: AbortSignal, onTimeout: () =>
   });
 }
 
+/**
+ * Decides whether Chrome may load a URL while shooting the page.
+ * Images and stylesheets are allowed when the host is not obviously private.
+ * A navigation, including a redirect, is checked again with DNS so the browser
+ * cannot be sent to a loopback or cloud-metadata address.
+ */
 async function allowRequest(request: HTTPRequest): Promise<boolean> {
   const target = request.url();
   if (target.startsWith("data:") || target.startsWith("blob:")) return true;
@@ -69,6 +84,11 @@ async function allowRequest(request: HTTPRequest): Promise<boolean> {
   }
 }
 
+/**
+ * Shrinks the captured JPEG to at most 1280px wide and re-encodes it at a lower quality.
+ * `withoutEnlargement` leaves an already-small screen at its real size.
+ * The return value is raw base64, which is what Gemini's inline image part expects.
+ */
 async function compressScreenshot(raw: Uint8Array): Promise<string> {
   const compressed = await sharp(Buffer.from(raw))
     .resize({ width: MAX_CAPTURE_WIDTH, withoutEnlargement: true })
@@ -78,12 +98,18 @@ async function compressScreenshot(raw: Uint8Array): Promise<string> {
   return compressed.toString("base64");
 }
 
+/**
+ * Opens one tab, waits for the load event, and photographs the viewport only.
+ * The first screenshot is a higher-quality JPEG. `compressScreenshot` makes the copy Gemini receives.
+ * Closing the tab is not awaited, because a stuck close must not hold the eight-second deadline.
+ */
 async function shoot(browser: Browser, pageUrl: string): Promise<string> {
   const page = await browser.newPage();
   try {
     page.setDefaultNavigationTimeout(CAPTURE_TIMEOUT_MS);
     page.setDefaultTimeout(CAPTURE_TIMEOUT_MS);
     await page.setViewport(VIEWPORT);
+    // Every request has to continue or abort, or goto waits until the deadline.
     await page.setRequestInterception(true);
     page.on("request", (request) => {
       void allowRequest(request).then(
@@ -97,6 +123,7 @@ async function shoot(browser: Browser, pageUrl: string): Promise<string> {
       );
     });
     await page.goto(pageUrl, { waitUntil: "load", timeout: CAPTURE_TIMEOUT_MS });
+    // quality 70 is only the intermediate file. compressScreenshot re-encodes the copy sent to the model.
     const raw = await page.screenshot({
       type: "jpeg",
       quality: 70,
@@ -108,6 +135,10 @@ async function shoot(browser: Browser, pageUrl: string): Promise<string> {
   }
 }
 
+/**
+ * Asks Chrome to exit, then kills the process if close is still running after one second.
+ * Called without awaiting so the route can answer while the browser shuts down.
+ */
 function closeBrowser(browser: Browser | undefined) {
   if (!browser) return;
   const killTimer = setTimeout(() => {
@@ -132,6 +163,7 @@ export async function capturePublicScreenshot(rawUrl: string, signal: AbortSigna
 
   const puppeteer = await import("puppeteer");
   let browser: Browser | undefined;
+  // Kill is separate from closeBrowser: the deadline must stop a hung launch immediately.
   const kill = () => {
     browser?.process()?.kill();
   };

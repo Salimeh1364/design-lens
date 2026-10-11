@@ -20,22 +20,27 @@ import {
  * This file is imported by client components — keep it free of Node and the AI SDK.
  */
 
+/** True for a plain object. Arrays are records in JS, and they are not the shapes we check. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** A non-empty string within the same length the server schema allows. */
 function isBoundedString(value: unknown, max: number): value is string {
   return typeof value === "string" && value.trim().length > 0 && value.length <= max;
 }
 
+/** A finite number from 0 to 100. NaN would otherwise pass a `typeof` check. */
 function isScore(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value >= 0 && value <= 100;
 }
 
+/** True when the file input reports a type the dropzone and the model both accept. */
 export function isImageMimeType(value: string): value is ImageMimeType {
   return (IMAGE_MIME_TYPES as readonly string[]).includes(value);
 }
 
+/** One of the four scored axes. */
 function isScoreDimension(value: unknown): value is ScoreDimension {
   return (
     typeof value === "string" &&
@@ -43,10 +48,12 @@ function isScoreDimension(value: unknown): value is ScoreDimension {
   );
 }
 
+/** high, medium, or low. */
 function isSeverity(value: unknown): value is Severity {
   return typeof value === "string" && (SEVERITIES as readonly string[]).includes(value);
 }
 
+/** One of the codes the notes panel knows how to translate. */
 function isErrorCode(value: unknown): value is AnalysisErrorCode {
   return (
     typeof value === "string" &&
@@ -54,6 +61,7 @@ function isErrorCode(value: unknown): value is AnalysisErrorCode {
   );
 }
 
+/** A single observation and the place on the screen it refers to. */
 function isEvidence(value: unknown): value is Evidence {
   if (!isRecord(value)) return false;
   return (
@@ -61,6 +69,7 @@ function isEvidence(value: unknown): value is Evidence {
   );
 }
 
+/** One axis score: id, a 0–100 number, and a short summary. */
 function isDimensionScore(value: unknown): value is DimensionScore {
   if (!isRecord(value)) return false;
   return (
@@ -70,6 +79,7 @@ function isDimensionScore(value: unknown): value is DimensionScore {
   );
 }
 
+/** One note: title, severity, feedback, recommendation, and one to four pieces of evidence. */
 function isCritiqueItem(value: unknown): value is CritiqueItem {
   if (!isRecord(value)) return false;
   if (!isBoundedString(value.title, 160)) return false;
@@ -81,6 +91,7 @@ function isCritiqueItem(value: unknown): value is CritiqueItem {
   return value.evidence.every(isEvidence);
 }
 
+/** True when `value` is the critique object the notes panel renders. */
 export function isAnalysisResult(value: unknown): value is AnalysisResult {
   if (!isRecord(value)) return false;
   if (!isScore(value.overallScore)) return false;
@@ -95,6 +106,7 @@ export function isAnalysisResult(value: unknown): value is AnalysisResult {
   return SCORE_DIMENSIONS.every((id) => seen.has(id)) && seen.size === SCORE_DIMENSIONS.length;
 }
 
+/** True when the route returned the shared error envelope. */
 export function isAnalysisErrorBody(value: unknown): value is AnalysisErrorBody {
   if (!isRecord(value)) return false;
   return isErrorCode(value.code) && typeof value.message === "string";

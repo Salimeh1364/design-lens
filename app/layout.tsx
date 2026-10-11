@@ -5,6 +5,7 @@ import { LanguageProvider } from "@/components/language-provider";
 import type { Locale } from "@/lib/types";
 import "./globals.css";
 
+/** Sans, mono, and the serif used for headlines. Each is exposed as a CSS variable. */
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -28,6 +29,10 @@ export const metadata: Metadata = {
     "AI design critique for screenshots and live websites. Upload a screen or paste a URL.",
 };
 
+/**
+ * Reads the locale cookie on the server so the first paint matches the
+ * language the designer last chose. A missing or unknown value stays English.
+ */
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const cookieStore = await cookies();
   const stored = cookieStore.get("design-lens-locale")?.value;

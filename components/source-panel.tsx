@@ -17,6 +17,10 @@ type SourcePanelProps = {
   onCritique: (request: AnalysisSource) => void;
 };
 
+/**
+ * The source step: a screenshot tab and a website tab.
+ * `resetEpoch` remounts the active form and clears both inputs after a review is dismissed.
+ */
 export function SourcePanel({ className = "", resetEpoch, onCritique }: SourcePanelProps) {
   const { locale, t } = useLanguage();
   const [active, setActive] = useState<SourceKind>("screenshot");
@@ -43,6 +47,7 @@ export function SourcePanel({ className = "", resetEpoch, onCritique }: SourcePa
     setActive("screenshot");
   }, [resetEpoch]);
 
+  /** Replaces the preview URL and revokes the previous object URL so the blob is not leaked. */
   function handleFileChange(next: File | null) {
     if (previewRef.current) URL.revokeObjectURL(previewRef.current);
     const url = next ? URL.createObjectURL(next) : null;
@@ -51,6 +56,7 @@ export function SourcePanel({ className = "", resetEpoch, onCritique }: SourcePa
     setPreviewUrl(url);
   }
 
+  /** Arrow keys, Home, and End move the tab selection. The newly selected tab receives focus. */
   function onTabsKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const index = TABS.indexOf(active);
     if (event.key !== "ArrowRight" && event.key !== "ArrowLeft" && event.key !== "Home" && event.key !== "End") {

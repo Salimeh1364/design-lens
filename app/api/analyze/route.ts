@@ -19,25 +19,30 @@ import type { AnalysisRequest, AnalysisResult } from "@/types/analysis";
  * Optional env: GEMINI_MODEL (default gemini-3.8-flash, which can read images)
  */
 
+/** Puppeteer and sharp need Node. Reviews are uncached and may run for up to two minutes. */
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
 const DEFAULT_MODEL = "gemini-3.8-flash";
+/** Rejects a declared body before it is parsed. Base64 makes a 10 MB image larger than 10 MB of JSON. */
 const MAX_BODY_BYTES = 16_000_000;
 
+/** Uses GEMINI_MODEL when it looks like a model id, otherwise the default vision model. */
 function resolveModelId(): string {
   const configured = process.env.GEMINI_MODEL?.trim();
   if (configured && /^[a-zA-Z0-9._:-]{1,80}$/.test(configured)) return configured;
   return DEFAULT_MODEL;
 }
 
+/** Logs the error name and HTTP status only, so keys and page contents stay out of the log. */
 function logFailure(error: unknown) {
   const name = error instanceof Error ? error.name : "unknown";
   const status = error instanceof ApiError ? error.status : undefined;
   console.error("analyze_failed", { name, status });
 }
 
+/** True when the designer cancelled the request or the HTTP call was aborted. */
 function isAbort(error: unknown): boolean {
   return error instanceof Error && error.name === "AbortError";
 }
@@ -50,6 +55,7 @@ class ReviewShapeError extends Error {
   }
 }
 
+/** Gemini refused the server key. Distinct from a missing key, which is checked before the call. */
 function isRejectedKey(error: ApiError): boolean {
   return (
     error.status === 401 ||
@@ -58,6 +64,7 @@ function isRejectedKey(error: ApiError): boolean {
   );
 }
 
+/** The project is over its request quota. Status 429 is the usual signal; some responses only say so in the message. */
 function isRateLimited(error: ApiError): boolean {
   return (
     error.status === 429 ||
@@ -65,6 +72,7 @@ function isRateLimited(error: ApiError): boolean {
   );
 }
 
+/** Google's deadline or our HTTP timeout elapsed before a critique came back. */
 function isUpstreamTimeout(error: ApiError): boolean {
   return (
     error.status === 408 ||
@@ -83,6 +91,11 @@ function thinkingConfig(model: string): ThinkingConfig | undefined {
   return undefined;
 }
 
+/**
+ * Sends one review to Gemini and returns the critique the notes panel can render.
+ * A screenshot uses the image the browser already compressed. A URL is captured
+ * on the server first, then sent as the same kind of image part.
+ */
 async function review(request: AnalysisRequest, signal: AbortSignal): Promise<AnalysisResult> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!apiKey) {
@@ -128,6 +141,7 @@ async function review(request: AnalysisRequest, signal: AbortSignal): Promise<An
     },
   });
 
+  // Structured output is still a string. An empty body or invalid JSON is a shape error, not a success.
   const text = response.text;
   if (!text) throw new ReviewShapeError();
 
@@ -146,6 +160,13 @@ async function review(request: AnalysisRequest, signal: AbortSignal): Promise<An
   return result;
 }
 
+/**
+ * POST /api/analyze
+ * Checks the body, refuses private addresses, then maps capture and Gemini
+ * failures onto the error codes the notes panel translates.
+ * A client abort is handled before a model timeout, and a page-capture
+ * failure is handled before a Gemini failure.
+ */
 export async function POST(request: Request) {
   const declaredLength = Number(request.headers.get("content-length") ?? "0");
   if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) {

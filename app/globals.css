@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+/* Studio palette. Components use these names (bg-paper, text-ink, border-line) instead of raw hex. */
+
 :root {
   --paper: #f3efe8;
   --card: #fffcf8;

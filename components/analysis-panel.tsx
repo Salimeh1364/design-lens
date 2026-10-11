@@ -27,6 +27,7 @@ type AnalysisPanelProps = {
   onReset: () => void;
 };
 
+/** Stage id to the progress sentence shown while a review is in flight. */
 const STAGE_COPY: Record<AnalysisStage, keyof Dictionary> = {
   preparing: "progressPreparing",
   sending: "progressSending",
@@ -34,6 +35,7 @@ const STAGE_COPY: Record<AnalysisStage, keyof Dictionary> = {
   writing: "progressWriting",
 };
 
+/** API error code to the localized sentence. The server `message` is only a fallback. */
 const ERROR_COPY: Record<AnalysisErrorCode, keyof Dictionary> = {
   invalid_request: "errorInvalid",
   missing_key: "errorMissingKey",
@@ -47,6 +49,7 @@ const ERROR_COPY: Record<AnalysisErrorCode, keyof Dictionary> = {
   timeout: "errorTimeout",
 };
 
+/** Short status chip: idle, reviewing, complete, or failed. */
 function statusLabel(status: AnalysisStatus, hasSource: boolean, t: Dictionary) {
   if (!hasSource) return t.statusIdle;
   if (status === "loading" || status === "idle") return t.statusAnalyzing;

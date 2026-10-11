@@ -1,5 +1,9 @@
 import type { NextConfig } from "next";
 
+/**
+ * Puppeteer and sharp ship native binaries, so Next must not bundle them.
+ * The body limit matches the screenshot cap: a 10 MB image is larger once it is base64 JSON.
+ */
 const nextConfig: NextConfig = {
   serverExternalPackages: ["puppeteer", "sharp"],
   experimental: {

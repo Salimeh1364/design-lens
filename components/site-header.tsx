@@ -9,6 +9,7 @@ const LOCALES: { id: Locale; short: string }[] = [
   { id: "de", short: "DE" },
 ];
 
+/** Sticky bar: brand, section links, and the English/German switch. */
 export function SiteHeader() {
   const { locale, setLocale, t } = useLanguage();
 
